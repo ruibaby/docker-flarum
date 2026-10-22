@@ -2,8 +2,10 @@
 
 ### Upgrade an existing Flarum 1.x forum to 1.8.20
 
-This image uses Alpine 3.24, PHP 8.3.36 or newer, Composer 2.10.3 and Flarum core
-1.8.20. The `flarum/flarum` skeleton version is 1.8.19; its version is independent
+This image uses Alpine 3.24, nginx 1.30.6 or newer, PHP 8.3.36 or newer, Composer
+2.10.3 and Flarum core 1.8.20. Use `ruibaby/flarum:1.8.20-r1`, which includes the
+nginx security fixes missing from the earlier `1.8.20` image. The
+`flarum/flarum` skeleton version is 1.8.19; its version is independent
 of the core version. This upgrade stays on Flarum 1.x.
 
 1. Back up the database and all mounted directories, and save `config.php`,
@@ -16,14 +18,14 @@ of the core version. This upgrade stays on Flarum 1.x.
    The new skeleton no longer bundles `flarum/pusher`. If you use its realtime
    notifications, add `flarum/pusher:^1.0` on a separate line in that list before
    replacing the container.
-2. Build the image from this checkout:
+2. Pull the updated image (supports AMD64 and ARM64):
 
    ```sh
-   docker build --pull -t docker-flarum:1.8.20 .
+   docker pull ruibaby/flarum:1.8.20-r1
    ```
 
 3. Change only the `flarum` service image in your Compose file to
-   `docker-flarum:1.8.20`. Keep the existing environment variables, mounts and
+   `ruibaby/flarum:1.8.20-r1`. Keep the existing environment variables, mounts and
    database image. The MariaDB 11.8 example in README is for new installations;
    do not point a new database major version at an old data directory without
    following its own upgrade procedure.
@@ -46,13 +48,15 @@ of the core version. This upgrade stays on Flarum 1.x.
    docker compose exec --user 991:991 flarum php /flarum/app/flarum cache:clear
    docker compose exec --user 991:991 flarum php /flarum/app/flarum info
    docker compose exec flarum php --version
+   docker compose exec flarum nginx -v
    docker compose exec flarum composer --version
    ```
 
-   Confirm core 1.8.20 and PHP 8.3.36 or newer, then check login, discussions,
-   uploads and the admin dashboard. Re-enable compatible extensions and restore
-   public traffic. To roll back after migrations, restore the database and mounted
-   directories from the same backup together with the previous image.
+   Confirm core 1.8.20, PHP 8.3.36 or newer and nginx 1.30.6 or newer, then check
+   login, discussions, uploads and the admin dashboard. Re-enable compatible
+   extensions and restore public traffic. To roll back after migrations, restore
+   the database and mounted directories from the same backup together with the
+   previous image.
 
 This image backports the Flysystem path-validation fix while retaining the 1.x API.
 See the [dependency advisory note](README.md#flarum-1x-dependency-advisory) for the

@@ -15,10 +15,10 @@
 
 ### Features
 
-- Multi-platform image: `linux/386`, `linux/amd64`, `linux/arm/v6`, `linux/arm/v7`, `linux/arm64`
+- Multi-platform image: `linux/amd64`, `linux/arm64`
 - Lightweight & secure image
 - Based on Alpine Linux 3.24
-- **nginx** and **PHP 8.3** (8.3.36 or newer security patch)
+- **nginx 1.30.6 or newer** and **PHP 8.3** (8.3.36 or newer security patch)
 - [Flarum Framework](https://github.com/flarum/framework) 1.8.20 (stays on Flarum 1.x)
 - MySQL/Mariadb driver
 - OPCache extension configured
@@ -74,15 +74,22 @@
 
 ## Installation
 
-#### 1 - Build the updated image
-
-From this checkout:
+#### 1 - Pull the updated image
 
 ```bash
-docker build --pull -t docker-flarum:1.8.20 .
+docker pull ruibaby/flarum:1.8.20-r1
 ```
 
-The examples below use this local image. The historical `mondedie/flarum` tags above are upstream images; building this checkout does not update them.
+This tag supports both AMD64 and ARM64. Revision `r1` includes the nginx 1.30.6
+security fixes; use it instead of the earlier `ruibaby/flarum:1.8.20` image.
+
+Or build from this checkout:
+
+```bash
+docker build --pull -t ruibaby/flarum:1.8.20-r1 .
+```
+
+The examples below use `ruibaby/flarum`. The historical `mondedie/flarum` tags above are upstream images and are maintained separately.
 
 #### 2 - Docker-compose.yml
 
@@ -91,7 +98,7 @@ version: "3"
 
 services:
   flarum:
-    image: docker-flarum:1.8.20
+    image: ruibaby/flarum:1.8.20-r1
     container_name: flarum
     env_file:
       - /mnt/docker/flarum/flarum.env
@@ -165,7 +172,7 @@ version: "3"
 
 services:
   flarum:
-    image: docker-flarum:1.8.20
+    image: ruibaby/flarum:1.8.20-r1
     container_name: flarum
     environment:
       - PHP_EXTENSIONS=bcmath

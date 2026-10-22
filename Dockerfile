@@ -29,7 +29,7 @@ RUN apk add --no-progress --no-cache \
     git \
     icu-data-full \
     libcap \
-    nginx \
+    'nginx>=1.30.6' \
     'php83>=8.3.36' \
     php83-ctype \
     php83-curl \
