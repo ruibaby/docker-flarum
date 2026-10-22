@@ -1,5 +1,64 @@
 # Guide for upgrade your flarum container
 
+### Upgrade an existing Flarum 1.x forum to 1.8.20
+
+This image uses Alpine 3.24, PHP 8.3.36 or newer, Composer 2.10.3 and Flarum core
+1.8.20. The `flarum/flarum` skeleton version is 1.8.19; its version is independent
+of the core version. This upgrade stays on Flarum 1.x.
+
+1. Back up the database and all mounted directories, and save `config.php`,
+   `composer.json` and `composer.lock` from the old container. Test with a copy of
+   the data first. Check third-party extensions for PHP 8.3 and Flarum 1.8
+   compatibility, and disable them in the admin dashboard before upgrading.
+   Extensions installed through the `extension` helper are restored from
+   `/flarum/app/extensions/list`; ensure this list includes every extra package
+   you need, including packages previously installed directly with Composer.
+   The new skeleton no longer bundles `flarum/pusher`. If you use its realtime
+   notifications, add `flarum/pusher:^1.0` on a separate line in that list before
+   replacing the container.
+2. Build the image from this checkout:
+
+   ```sh
+   docker build --pull -t docker-flarum:1.8.20 .
+   ```
+
+3. Change only the `flarum` service image in your Compose file to
+   `docker-flarum:1.8.20`. Keep the existing environment variables, mounts and
+   database image. The MariaDB 11.8 example in README is for new installations;
+   do not point a new database major version at an old data directory without
+   following its own upgrade procedure.
+4. Stop the forum, recreate the application container and inspect startup logs:
+
+   ```sh
+   docker compose stop flarum
+   docker compose up -d --no-deps flarum
+   docker compose logs flarum
+   ```
+
+   Keep public traffic disabled until migrations and checks below succeed.
+   Startup restores the extra extensions using Composer; resolve any dependency
+   errors before proceeding.
+5. Run migrations and clear caches as the configured application user (replace
+   `991:991` if you changed `UID`/`GID`):
+
+   ```sh
+   docker compose exec --user 991:991 flarum php /flarum/app/flarum migrate
+   docker compose exec --user 991:991 flarum php /flarum/app/flarum cache:clear
+   docker compose exec --user 991:991 flarum php /flarum/app/flarum info
+   docker compose exec flarum php --version
+   docker compose exec flarum composer --version
+   ```
+
+   Confirm core 1.8.20 and PHP 8.3.36 or newer, then check login, discussions,
+   uploads and the admin dashboard. Re-enable compatible extensions and restore
+   public traffic. To roll back after migrations, restore the database and mounted
+   directories from the same backup together with the previous image.
+
+This image backports the Flysystem path-validation fix while retaining the 1.x API.
+See the [dependency advisory note](README.md#flarum-1x-dependency-advisory) for the
+Composer hooks and narrowly scoped exception. Because the upstream package version
+is unchanged, `composer audit` will continue to report the advisory.
+
 ### Upgrade to v1.3.0 from v1.2.0
 
 :warning: Backup your database, config.php, composer.lock and assets folder  
@@ -19,7 +78,7 @@ services:
 2 - Pull the last docker images
 
 ```sh
-docker pull mondedie/flarum:1.2.0
+docker pull mondedie/flarum:1.3.0
 docker-compose stop flarum
 docker-compose rm flarum
 docker-compose up -d flarum

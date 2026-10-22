@@ -33,6 +33,7 @@ case "${action}" in
       sort -u -o "${LIST_FILE}" "${LIST_FILE}"
     else
       echo -e "\n${CRED}/!\ An error has occurred...${CEND}"
+      exit 1
     fi
     ;;
   # Remove a flarum extension
@@ -43,6 +44,7 @@ case "${action}" in
       echo -e "\n${CGREEN}${package} removed from flarum${CEND}"
     else
       echo -e "\n${CRED}/!\ An error has occurred...${CEND}"
+      exit 1
     fi
     ;;
   "list")
@@ -50,10 +52,8 @@ case "${action}" in
     ;;
   # Other composer action
   *)
-    COMPOSER_CACHE_DIR="${CACHE_DIR}" su-exec "${UID}:${GID}" composer "${@}"
+    COMPOSER_CACHE_DIR="${CACHE_DIR}" su-exec "${UID}:${GID}" composer "${@}" || exit $?
     ;;
 esac
 
-su-exec "${UID}:${GID}" php /flarum/app/flarum cache:clear
-
-exit 0
+exec su-exec "${UID}:${GID}" php /flarum/app/flarum cache:clear

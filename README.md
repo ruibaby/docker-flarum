@@ -17,15 +17,18 @@
 
 - Multi-platform image: `linux/386`, `linux/amd64`, `linux/arm/v6`, `linux/arm/v7`, `linux/arm64`
 - Lightweight & secure image
-- Based on Alpine Linux 3.16
-- **nginx** and **PHP 8.0**
-- Latest [Flarum Framework](https://github.com/flarum/framework) (v1.3.0)
+- Based on Alpine Linux 3.24
+- **nginx** and **PHP 8.3** (8.3.36 or newer security patch)
+- [Flarum Framework](https://github.com/flarum/framework) 1.8.20 (stays on Flarum 1.x)
 - MySQL/Mariadb driver
 - OPCache extension configured
 
 ### Build-time variables
 
-- **VERSION** = Version of [flarum/flarum](https://github.com/flarum/flarum) skeleton (default: *v1.3.0*)
+- **VERSION** = Version of [flarum/flarum](https://github.com/flarum/flarum) skeleton (default: *v1.8.19*)
+- **CORE_VERSION** = Exact Flarum core version (default: *1.8.20*)
+- **COMPOSER_VERSION** = Composer version (default: *2.10.3*)
+- **COMPOSER_SHA256** = SHA-256 of the selected Composer PHAR; update it together with **COMPOSER_VERSION**
 
 ### Ports
 
@@ -71,15 +74,15 @@
 
 ## Installation
 
-#### 1 - Pull flarum image
+#### 1 - Build the updated image
+
+From this checkout:
 
 ```bash
-# Pull from hub.docker.com :
-docker pull mondedie/flarum:latest
-
-# or build it manually :
-docker build -t mondedie/flarum:latest https://github.com/mondediefr/docker-flarum.git
+docker build --pull -t docker-flarum:1.8.20 .
 ```
+
+The examples below use this local image. The historical `mondedie/flarum` tags above are upstream images; building this checkout does not update them.
 
 #### 2 - Docker-compose.yml
 
@@ -88,7 +91,7 @@ version: "3"
 
 services:
   flarum:
-    image: mondedie/flarum:stable
+    image: docker-flarum:1.8.20
     container_name: flarum
     env_file:
       - /mnt/docker/flarum/flarum.env
@@ -103,7 +106,7 @@ services:
       - mariadb
 
   mariadb:
-    image: mariadb:10.5
+    image: mariadb:11.8
     container_name: mariadb
     environment:
       - MYSQL_ROOT_PASSWORD=xxxxxxxxxx
@@ -145,9 +148,9 @@ FLARUM_TITLE=Test flarum
 Run your docker-compose
 
 ```sh
-docker-compose up -d mariadb
+docker compose up -d mariadb
 # Wait a moment for the creation of the database
-docker-compose up -d flarum
+docker compose up -d flarum
 ```
 
 * :warning: Your admin password must contain at least **8 characters** (FLARUM_ADMIN_PASS).
@@ -162,10 +165,10 @@ version: "3"
 
 services:
   flarum:
-    image: mondedie/flarum:stable
+    image: docker-flarum:1.8.20
     container_name: flarum
     environment:
-      - PHP_EXTENSIONS=gmp session brotli
+      - PHP_EXTENSIONS=bcmath
     volumes:
       - /mnt/docker/flarum/assets:/flarum/app/public/assets
       - /mnt/docker/flarum/extensions:/flarum/app/extensions
@@ -173,8 +176,9 @@ services:
       - /mnt/docker/flarum/nginx:/etc/nginx/flarum
 ```
 
-This example install php8-gmp php8-session and php8-brotli with apk  
-You can find a php extension here https://pkgs.alpinelinux.org/packages?name=php8-*&branch=v3.13&arch=x86_64
+This example installs php83-bcmath with apk.
+
+You can find a php extension here https://pkgs.alpinelinux.org/packages?name=php83-*&branch=v3.24&arch=x86_64
 
 ### Install custom extensions
 
@@ -246,7 +250,26 @@ https://getcomposer.org/doc/03-cli.md#modifying-repositories
 
 ### Guide for upgrade your flarum container
 
-See the instructions [here](https://github.com/mondediefr/docker-flarum/blob/master/UPGRADE.md)
+See [UPGRADE.md](UPGRADE.md). The MariaDB 11.8 example is for new installations; upgrade an existing database separately using the [MariaDB upgrade documentation](https://mariadb.com/docs/server/server-management/install-and-upgrade-mariadb/upgrading).
+
+### Flarum 1.x dependency advisory
+
+Flarum 1.x requires `league/flysystem` 1.x, which has no official patched release for
+[GHSA-cxf4-7mrp-vvpr](https://github.com/advisories/GHSA-cxf4-7mrp-vvpr).
+This image backports the [upstream fix](https://github.com/thephpleague/flysystem/commit/ef4a9a557d769b5d472c403125716706a0d9cc77)
+to reject malformed UTF-8 paths. The build runs regression checks for invalid paths,
+normal filenames and path traversal. Composer hooks reapply the patch after install,
+update and autoload generation (including normal `reinstall` operations). Startup
+also checks/applies the patch before launching the forum.
+
+Do not disable Composer scripts/autoload generation when changing dependencies.
+If you must bypass these hooks, run `php /usr/local/lib/flarum/patch-flysystem.php`
+before serving requests again. An unexpected dependency source causes patching to
+fail, and the extension helper/startup extension restore propagates that failure.
+
+The upstream package version is unchanged, so `composer audit` still reports the
+advisory. The narrowly scoped dependency-resolution exception remains; it does not
+hide the advisory or disable checks for other vulnerable packages.
 
 ## License
 

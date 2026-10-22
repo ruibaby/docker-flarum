@@ -16,9 +16,9 @@ LIST_FILE=/flarum/app/extensions/list
 
 # Set file config for nginx and php
 sed -i "s/<FLARUM_PORT>/${FLARUM_PORT}/g" /etc/nginx/nginx.conf
-sed -i "s/<UPLOAD_MAX_SIZE>/${UPLOAD_MAX_SIZE}/g" /etc/nginx/nginx.conf /etc/php8/php-fpm.d/www.conf
-sed -i "s/<PHP_MEMORY_LIMIT>/${PHP_MEMORY_LIMIT}/g" /etc/php8/php-fpm.d/www.conf
-sed -i "s/<OPCACHE_MEMORY_LIMIT>/${OPCACHE_MEMORY_LIMIT}/g" /etc/php8/conf.d/00_opcache.ini
+sed -i "s/<UPLOAD_MAX_SIZE>/${UPLOAD_MAX_SIZE}/g" /etc/nginx/nginx.conf /etc/php83/php-fpm.d/www.conf
+sed -i "s/<PHP_MEMORY_LIMIT>/${PHP_MEMORY_LIMIT}/g" /etc/php83/php-fpm.d/www.conf
+sed -i "s/<OPCACHE_MEMORY_LIMIT>/${OPCACHE_MEMORY_LIMIT}/g" /etc/php83/conf.d/00_opcache.ini
 
 # Set permissions for /flarum folder
 echo "[INFO] Setting folder permissions"
@@ -35,19 +35,20 @@ if [ "${LOG_TO_STDOUT}" = true ]; then
   echo "[INFO] Logging to stdout activated"
   chmod o+w /dev/stdout
   sed -i "s/.*error_log.*$/error_log \/dev\/stdout warn;/" /etc/nginx/nginx.conf
-  sed -i "s/.*error_log.*$/error_log = \/dev\/stdout/" /etc/php8/php-fpm.d/www.conf
+  sed -i "s/.*error_log.*$/error_log = \/dev\/stdout/" /etc/php83/php-fpm.d/www.conf
 fi
 
 # Install additional php extensions
 if [ -n "${PHP_EXTENSIONS}" ]; then
   for php_extension in ${PHP_EXTENSIONS}; do
-    PACKAGES="php8-${php_extension} ${PACKAGES}"
+    PACKAGES="php83-${php_extension} ${PACKAGES}"
   done
   echo "[INFO] Adding php extensions"
   apk add --no-progress --no-cache ${PACKAGES}
 fi
 
 cd /flarum/app
+su-exec "${UID}:${GID}" php /usr/local/lib/flarum/patch-flysystem.php || exit $?
 
 # Add github token authentication (eg. for privates extensions)
 if [ "${GITHUB_TOKEN_AUTH}" != false ]; then
@@ -88,7 +89,7 @@ if [ -e '/flarum/app/public/assets/rev-manifest.json' ] || [ -e '/flarum/app/pub
       extension="${extension}${line} "
     done < /flarum/app/extensions/list
     cmd="composer require ${extension}"
-    eval "COMPOSER_CACHE_DIR=${CACHE_DIR} su-exec ${UID}:${GID} ${cmd}"
+    eval "COMPOSER_CACHE_DIR=${CACHE_DIR} su-exec ${UID}:${GID} ${cmd}" || exit $?
     echo "[INFO] Install extra bundled extensions: DONE"
   else
     echo "[INFO] No installed extensions"
@@ -125,4 +126,4 @@ else
 fi
 
 echo "[INFO] End of startup script. Forum is starting."
-exec su-exec "${UID}:${GID}" /bin/s6-svscan /etc/s6.d
+exec su-exec "${UID}:${GID}" s6-svscan /etc/s6.d
